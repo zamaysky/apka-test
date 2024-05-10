@@ -1,12 +1,15 @@
 from contextlib import asynccontextmanager
 from functools import partial
-import strawberry
-from strawberry.types import Info
-from fastapi import FastAPI
-from strawberry.fastapi import BaseContext, GraphQLRouter
-from databases import Database
 
-from settings import Settings
+import aiofiles
+import strawberry
+from databases import Database
+from fastapi import FastAPI
+from jinja2 import Template
+from strawberry.fastapi import BaseContext, GraphQLRouter
+from strawberry.types import Info
+
+from settings import settings
 
 
 class Context(BaseContext):
@@ -16,17 +19,20 @@ class Context(BaseContext):
         self,
         db: Database,
     ) -> None:
+        super().__init__()
         self.db = db
 
 
 
 @strawberry.type
 class Author:
+    id: int
     name: str
 
 
 @strawberry.type
 class Book:
+    id: int
     title: str
     author: Author
 
@@ -38,27 +44,29 @@ class Query:
     async def books(
         self,
         info: Info[Context, None],
-        author_ids: list[int] | None = [],
+        author_ids: list[int] | None = None,
         search: str | None = None,
         limit: int | None = None,
     ) -> list[Book]:
-        # TODO:
-        # Do NOT use dataloaders
-        await info.context.db.execute("select 1")
-        return []
+        async with aiofiles.open("templates/books_query.tmpl") as file:
+            template = Template(await file.read())
+        query = template.render(author_ids=author_ids, search=search, limit=limit)
+        books = await info.context.db.fetch_all(query)
+        return [
+            Book(
+                id=book['id'],
+                title=book['title'],
+                author=Author(
+                    id=book['author_id'],
+                    name=book['author_name']),
+            )
+            for book in books
+        ]
 
 
 
-CONN_TEMPLATE = "postgresql+asyncpg://{user}:{password}@{host}:{port}/{name}"
-settings = Settings()  # type: ignore
 db = Database(
-    CONN_TEMPLATE.format(
-        user=settings.DB_USER,
-        password=settings.DB_PASSWORD,
-        port=settings.DB_PORT,
-        host=settings.DB_SERVER,
-        name=settings.DB_NAME,
-    ),
+    settings.asyncpg_conn,
 )
 
 @asynccontextmanager

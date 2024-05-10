@@ -1,0 +1,10 @@
+services:
+  postgres-db:
+    image: postgres:15.4
+    container_name: postgres-db
+    ports:
+      - $POSTGRES_PORT:5432
+    environment:
+      POSTGRES_DB: $POSTGRES_DB_NAME
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD

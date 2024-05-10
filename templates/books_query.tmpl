@@ -1,0 +1,18 @@
+select b.id,
+       b.title,
+       a.name as author_name,
+       a.id as author_id
+  from books b
+  join authors a
+    on b.author_id = a.id
+ where true
+{% if author_ids is not none %}
+    and b.author_id in ({{ author_ids | join(', ') }})
+{% endif %}
+{% if search is not none %}
+    and b.title ilike '%{{ search }}%'
+{% endif %}
+{% if limit is not none %}
+    limit {{ limit }}
+{% endif %}
+;

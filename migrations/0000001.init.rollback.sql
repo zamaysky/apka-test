@@ -1,2 +1,2 @@
-drop table books;
-drop table authors;
+drop table if exists books;
+drop table if exists authors;
